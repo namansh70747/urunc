@@ -15,7 +15,10 @@
 //revive:disable:var-naming
 package types
 
-import "golang.org/x/sys/unix"
+import (
+	specs "github.com/opencontainers/runtime-spec/specs-go"
+	"golang.org/x/sys/unix"
+)
 
 type Unikernel interface {
 	Init(UnikernelParams) error
@@ -74,9 +77,10 @@ type RootfsParams struct {
 
 // Specific to Linux
 type ProcessConfig struct {
-	UID     uint32 // The uid of the process inside the guest
-	GID     uint32 // The gid of the process inside the guest
-	WorkDir string // The workdir of the process inside the guest
+	UID     uint32              // The uid of the process inside the guest
+	GID     uint32              // The gid of the process inside the guest
+	WorkDir string              // The workdir of the process inside the guest
+	Rlimits []specs.POSIXRlimit // The rlimits for the process inside the guest
 }
 
 // UnikernelParams holds the data required to build the unikernels commandline

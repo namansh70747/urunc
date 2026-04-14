@@ -314,6 +314,15 @@ func (l *Linux) buildUrunitConfig() string {
 	sb.WriteString("WD:")
 	sb.WriteString(l.ProcConfig.WorkDir)
 	sb.WriteString("\n")
+	for _, rl := range l.ProcConfig.Rlimits {
+		sb.WriteString("RLIMIT:")
+		sb.WriteString(rl.Type)
+		sb.WriteString(":")
+		sb.WriteString(strconv.FormatUint(rl.Soft, 10))
+		sb.WriteString(":")
+		sb.WriteString(strconv.FormatUint(rl.Hard, 10))
+		sb.WriteString("\n")
+	}
 	sb.WriteString(lpcEndMarker)
 	sb.WriteString("\n")
 	sb.WriteString(blkStartMarker)
