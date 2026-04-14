@@ -285,6 +285,7 @@ func (u *Unikontainer) Exec(metrics m.Writer) error {
 		UID:     u.Spec.Process.User.UID,
 		GID:     u.Spec.Process.User.GID,
 		WorkDir: u.Spec.Process.Cwd,
+		Rlimits: u.Spec.Process.Rlimits,
 	}
 	// UnikernelParams
 	// populate unikernel params
