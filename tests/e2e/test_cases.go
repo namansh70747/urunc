@@ -733,6 +733,23 @@ func ctrTestCases() []containerTestArgs {
 			ExpectOut:      "UID: 0 GID: 42 WD: /test_dir URUNC: urunc",
 			TestFunc:       matchTest,
 		},
+		{
+			Image:          "harbor.nbfc.io/nubificus/urunc/hello-world-qemu-hermit-initrd:latest",
+			Name:           "Qemu-hermit-hello-world",
+			Devmapper:      false,
+			Seccomp:        true,
+			UID:            0,
+			GID:            0,
+			Groups:         []int64{},
+			Memory:         "",
+			Cli:            "",
+			Volumes:        []containerVolume{},
+			StaticNet:      false,
+			SideContainers: []string{},
+			Skippable:      false,
+			ExpectOut:      "Hello, world!",
+			TestFunc:       matchTest,
+		},
 	}
 }
 

@@ -342,6 +342,45 @@ An example of a Redis alpine image transformed to a block file on top of
 sudo nerdctl run --rm -ti --runtime io.containerd.urunc.v2 harbor.nbfc.io/nubificus/urunc/redis-firecracker-linux-block:latest
 ```
 
+## Hermit
+
+[Hermit](https://hermit-os.org/) is a unikernel designed for
+high-performance and cloud/HPC workloads.
+Its a Rust re-write of the Hermit-Core unikernel in order to leverage the
+memory/thread-safety guarantees provided by the Rust ownership model.
+
+Hermit provides support for multiple compiled languages like Rust, C, C++, Go and Fotran. Hermit applications are compiled
+into a unikernel image that includes both the application and the operating system.
+When the unikernel boots, the application starts execution immediately.
+
+Hermit provides support for multithreading, networking, and basic system
+interfaces. It is particularly well-suited for cloud and microservice
+environments where lightweight isolation is required.
+
+### VMMs and other sandbox monitors
+
+Hermit runs on top of the [QEMU](https://www.qemu.org/) virtual machine monitor.
+It supports standard virtualization interfaces such as virtio devices for networking.
+
+When executed with [QEMU](https://www.qemu.org/), Hermit can access the network through
+a `virtio-net` device. Hermit supports both `virtio-fs` and `initrd` as storage options with the respective configuration at build time.
+
+### Hermit and `urunc`
+
+In the case of Hermit, `urunc` provides support for running unikernels on
+top of QEMU. If the container is configured with network access, `urunc` will
+attach a `virtio-net` device to enable networking for the unikernel. Hermit in `urunc` only supports `initrd` for storage.
+
+For more information on packaging
+[Hermit](https://hermit-os.org/) unikernels for `urunc` take
+a look at our [packaging](../package/) page.
+
+An example of running a Hermit unikernel with `urunc`:
+
+```bash
+sudo nerdctl run --rm -ti --runtime io.containerd.urunc.v2 harbor.nbfc.io/nubificus/urunc/hello-world-qemu-hermit-initrd:latest
+```
+
 ## Future unikernels and frameworks:
 
 In the near future, we plan to add support for the following frameworks:
