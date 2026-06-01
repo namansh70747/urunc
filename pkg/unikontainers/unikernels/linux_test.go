@@ -50,7 +50,12 @@ func TestBuildUrunitConfigNoRlimits(t *testing.T) {
 			l := newTestLinux(tt.rlimits)
 			conf := l.buildUrunitConfig()
 			t.Logf("generated urunit.conf:\n%s", conf)
-			assert.NotContains(t, conf, "RLIMIT:", "expected no RLIMIT lines")
+			// With no rlimits the whole RLS block is omitted, so the
+			// generated configuration stays identical to guests that
+			// predate the rlimit support.
+			assert.NotContains(t, conf, "RLS\n", "expected no rlimit block")
+			assert.NotContains(t, conf, "RLE\n", "expected no rlimit block")
+			assert.NotContains(t, conf, "TYPE:", "expected no rlimit entries")
 		})
 	}
 }
@@ -62,7 +67,12 @@ func TestBuildUrunitConfigSingleRlimit(t *testing.T) {
 	conf := l.buildUrunitConfig()
 	t.Logf("generated urunit.conf:\n%s", conf)
 
-	assert.Contains(t, conf, "RLIMIT:RLIMIT_NOFILE:1024:4096\n")
+	assert.Contains(t, conf, "RLS\n")
+	assert.Contains(t, conf, "NUM:1\n")
+	assert.Contains(t, conf, "TYPE:RLIMIT_NOFILE\n")
+	assert.Contains(t, conf, "SOFT:1024\n")
+	assert.Contains(t, conf, "HARD:4096\n")
+	assert.Contains(t, conf, "RLE\n")
 }
 
 func TestBuildUrunitConfigMultipleRlimits(t *testing.T) {
@@ -74,12 +84,13 @@ func TestBuildUrunitConfigMultipleRlimits(t *testing.T) {
 	conf := l.buildUrunitConfig()
 	t.Logf("generated urunit.conf:\n%s", conf)
 
-	assert.Contains(t, conf, "RLIMIT:RLIMIT_NOFILE:1024:4096\n")
-	assert.Contains(t, conf, "RLIMIT:RLIMIT_NPROC:512:1024\n")
-	assert.Contains(t, conf, "RLIMIT:RLIMIT_AS:0:0\n")
+	assert.Contains(t, conf, "NUM:3\n", "NUM must match the number of entries")
+	assert.Contains(t, conf, "TYPE:RLIMIT_NOFILE\nSOFT:1024\nHARD:4096\n")
+	assert.Contains(t, conf, "TYPE:RLIMIT_NPROC\nSOFT:512\nHARD:1024\n")
+	assert.Contains(t, conf, "TYPE:RLIMIT_AS\nSOFT:0\nHARD:0\n")
 }
 
-func TestBuildUrunitConfigRlimitsInsideProcessBlock(t *testing.T) {
+func TestBuildUrunitConfigRlimitsAreInOwnBlock(t *testing.T) {
 	l := newTestLinux([]specs.POSIXRlimit{
 		{Type: "RLIMIT_NOFILE", Soft: 1024, Hard: 4096},
 	})
@@ -88,12 +99,23 @@ func TestBuildUrunitConfigRlimitsInsideProcessBlock(t *testing.T) {
 
 	ucs := strings.Index(conf, "UCS\n")
 	uce := strings.Index(conf, "UCE\n")
-	if ucs < 0 || uce < 0 || ucs >= uce {
-		t.Fatalf("invalid UCS/UCE markers:\n%s", conf)
+	rls := strings.Index(conf, "RLS\n")
+	rle := strings.Index(conf, "RLE\n")
+	ubs := strings.Index(conf, "UBS\n")
+	if ucs < 0 || uce < 0 || rls < 0 || rle < 0 || ubs < 0 {
+		t.Fatalf("missing one of UCS/UCE/RLS/RLE/UBS markers:\n%s", conf)
 	}
 
-	block := conf[ucs : uce+4]
-	assert.Contains(t, block, "RLIMIT:RLIMIT_NOFILE:1024:4096\n", "expected RLIMIT line inside process block")
+	// The rlimit entries must live in their own RLS..RLE block and not leak
+	// into the UCS..UCE process-config block.
+	procBlock := conf[ucs : uce+len("UCE\n")]
+	assert.NotContains(t, procBlock, "TYPE:", "rlimits must not be inside the process block")
+
+	// Block ordering must be UCS..UCE, then RLS..RLE, then UBS, so urunit
+	// parses each block in the expected sequence.
+	assert.Less(t, uce, rls, "RLS block must come after the UCE marker")
+	assert.Less(t, rls, rle, "RLS must precede RLE")
+	assert.Less(t, rle, ubs, "RLS block must come before the UBS block")
 }
 
 func TestBuildUrunitConfigUIDGIDWorkdir(t *testing.T) {

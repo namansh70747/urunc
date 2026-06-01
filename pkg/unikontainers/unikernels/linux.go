@@ -27,15 +27,17 @@ import (
 )
 
 const (
-	LinuxUnikernel   string = "linux"
-	urunitConfPath   string = "/urunit.conf"
-	retainInitrdPath string = "/sys/firmware/initrd"
-	envStartMarker   string = "UES"
-	envEndMarker     string = "UEE"
-	lpcStartMarker   string = "UCS" // Linux process config start marker
-	lpcEndMarker     string = "UCE" // Linux process config end marker
-	blkStartMarker   string = "UBS" // Block-based mounts start marker
-	blkEndMarker     string = "UBE" // Block-based mounts end marker
+	LinuxUnikernel    string = "linux"
+	urunitConfPath    string = "/urunit.conf"
+	retainInitrdPath  string = "/sys/firmware/initrd"
+	envStartMarker    string = "UES"
+	envEndMarker      string = "UEE"
+	lpcStartMarker    string = "UCS" // Linux process config start marker
+	lpcEndMarker      string = "UCE" // Linux process config end marker
+	blkStartMarker    string = "UBS" // Block-based mounts start marker
+	blkEndMarker      string = "UBE" // Block-based mounts end marker
+	rlimitStartMarker string = "RLS" // Resource limits (rlimits) start marker
+	rlimitEndMarker   string = "RLE" // Resource limits (rlimits) end marker
 )
 
 type Linux struct {
@@ -314,17 +316,36 @@ func (l *Linux) buildUrunitConfig() string {
 	sb.WriteString("WD:")
 	sb.WriteString(l.ProcConfig.WorkDir)
 	sb.WriteString("\n")
-	for _, rl := range l.ProcConfig.Rlimits {
-		sb.WriteString("RLIMIT:")
-		sb.WriteString(rl.Type)
-		sb.WriteString(":")
-		sb.WriteString(strconv.FormatUint(rl.Soft, 10))
-		sb.WriteString(":")
-		sb.WriteString(strconv.FormatUint(rl.Hard, 10))
-		sb.WriteString("\n")
-	}
 	sb.WriteString(lpcEndMarker)
 	sb.WriteString("\n")
+	// Resource limits (rlimits) are passed in their own block, following the
+	// same KEY:VALUE convention as the rest of the protocol. The block begins
+	// with the number of entries (NUM), so urunit can allocate the rlimit
+	// arrays exactly once. Each entry is described by three lines: TYPE, SOFT
+	// and HARD. The block is only emitted when there is at least one rlimit, so
+	// that the generated configuration stays identical to before for guests
+	// without any rlimits.
+	// Format: RLS\nNUM:<n>\nTYPE:<type>\nSOFT:<soft>\nHARD:<hard>\n...\nRLE\n
+	if len(l.ProcConfig.Rlimits) > 0 {
+		sb.WriteString(rlimitStartMarker)
+		sb.WriteString("\n")
+		sb.WriteString("NUM:")
+		sb.WriteString(strconv.Itoa(len(l.ProcConfig.Rlimits)))
+		sb.WriteString("\n")
+		for _, rl := range l.ProcConfig.Rlimits {
+			sb.WriteString("TYPE:")
+			sb.WriteString(rl.Type)
+			sb.WriteString("\n")
+			sb.WriteString("SOFT:")
+			sb.WriteString(strconv.FormatUint(rl.Soft, 10))
+			sb.WriteString("\n")
+			sb.WriteString("HARD:")
+			sb.WriteString(strconv.FormatUint(rl.Hard, 10))
+			sb.WriteString("\n")
+		}
+		sb.WriteString(rlimitEndMarker)
+		sb.WriteString("\n")
+	}
 	sb.WriteString(blkStartMarker)
 	sb.WriteString("\n")
 	for _, b := range l.Blk {
