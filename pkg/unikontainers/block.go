@@ -45,6 +45,11 @@ type blockRootfs struct {
 	uruncJSONPath string
 	guestType     string
 	guest         types.Unikernel
+	// blkDev is the device name (a.k.a. Solo5 manifest name) that the guest
+	// expects for the rootfs block device. It is set from the
+	// com.urunc.unikernel.blkDev annotation. When empty, the default "rootfs"
+	// ID is used.
+	blkDev string
 }
 
 // getMountInfo determines whether the provided path is a mount point
@@ -166,7 +171,7 @@ func copyMountfiles(targetPath string, mounts []specs.Mount) error {
 	return nil
 }
 
-func handleExplicitBlockImage(blockImg string, mountPoint string) (types.BlockDevParams, error) {
+func handleExplicitBlockImage(blockImg string, mountPoint string, blkDev string) (types.BlockDevParams, error) {
 	if blockImg == "" {
 		return types.BlockDevParams{}, nil
 	}
@@ -175,8 +180,11 @@ func handleExplicitBlockImage(blockImg string, mountPoint string) (types.BlockDe
 		return types.BlockDevParams{}, fmt.Errorf("annotation for block device was set without a mountpoint")
 	}
 
-	id := ""
-	if mountPoint == "/" {
+	// The device name the guest expects (e.g. the Solo5 manifest name) takes
+	// precedence when provided through the com.urunc.unikernel.blkDev
+	// annotation. Otherwise, fall back to "rootfs" for a block mounted at "/".
+	id := blkDev
+	if id == "" && mountPoint == "/" {
 		id = "rootfs"
 	}
 
@@ -274,6 +282,13 @@ func (b blockRootfs) getBlockDevs() ([]types.BlockDevParams, error) {
 		Source:     b.path,
 		MountPoint: "/",
 		ID:         "rootfs",
+	}
+
+	// If the image specifies the device name that the guest expects (e.g. the
+	// name in the Solo5 manifest for MirageOS), use it as the block device ID.
+	// Otherwise we fall back to the default "rootfs" ID.
+	if b.blkDev != "" {
+		rootfsBlock.ID = b.blkDev
 	}
 
 	// NOTE: Rumprun does not allow us to mount

@@ -54,6 +54,7 @@ type noRootfs struct {
 	monRootfs            string
 	annotBlockPath       string
 	annotBlockMountPoint string
+	annotBlkDev          string
 }
 
 func (n noRootfs) preSetup() error {
@@ -74,7 +75,7 @@ func (n noRootfs) postSetup() error {
 func (n noRootfs) getBlockDevs() ([]types.BlockDevParams, error) {
 	blkImgs := []types.BlockDevParams{}
 	blockFromAnnot, err := handleExplicitBlockImage(n.annotBlockPath,
-		n.annotBlockMountPoint)
+		n.annotBlockMountPoint, n.annotBlkDev)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +83,11 @@ func (n noRootfs) getBlockDevs() ([]types.BlockDevParams, error) {
 	if blockFromAnnot.Source != "" && blockFromAnnot.MountPoint != "/" {
 		// TODO: Add proper support for multiple block Images from the container's
 		// image. This requires adding more annotations too.
-		blockFromAnnot.ID = "annot_vol"
+		// When the image does not specify the device name through the
+		// com.urunc.unikernel.blkDev annotation, fall back to "annot_vol".
+		if blockFromAnnot.ID == "" {
+			blockFromAnnot.ID = "annot_vol"
+		}
 		blkImgs = append(blkImgs, blockFromAnnot)
 	}
 

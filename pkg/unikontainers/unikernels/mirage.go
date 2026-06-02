@@ -65,28 +65,44 @@ func (m *Mirage) MonitorNetCli(ifName string, mac string) string {
 	}
 }
 
+// MirageDefaultBlkID is the device name (Solo5 manifest name) used for a
+// MirageOS block device when the image does not specify one through the
+// com.urunc.unikernel.blkDev annotation. It matches the name commonly used by
+// MirageOS unikernels and preserves backwards compatibility with images that
+// predate the annotation.
+const MirageDefaultBlkID string = "storage"
+
+// genericRootfsBlkID is the urunc-internal default ID assigned to the rootfs
+// block device (see blockRootfs.getBlockDevs). It is not a MirageOS Solo5
+// manifest name, so for MirageOS we treat it the same as an unset name and
+// fall back to MirageDefaultBlkID.
+const genericRootfsBlkID string = "rootfs"
+
 func (m *Mirage) MonitorBlockCli() []types.MonitorBlockArgs {
 	if len(m.Block) == 0 {
 		return nil
 	}
 	switch m.Monitor {
 	case "hvt", "spt":
-		// TODO: Explore options for multiple block devices in MirageOS
-		// over Solo5-spt and Solo5-hvt. Solo5 expects to use as an ID
-		// a specific name which the guest is also aware of in order to
-		// attach the respective block. As a result, urunc needs to know
-		// the correct ID to set, which is not straightforward. Therefore,
-		// there are two options. Either we read the Solo5 manifest or,
-		// we require specific IDs. Till we decide about that, we will
-		// use a single block device. We also need to find some use cases
-		// where multiple block devices are configured in MirageOS and check
-		// how MirageOS handles/configures them.
-		return []types.MonitorBlockArgs{
-			{
-				ID:   "storage",
-				Path: m.Block[0].HostPath,
-			},
+		// Solo5 attaches block devices by a name that the guest is aware of
+		// at build time (stored in the Solo5 manifest). urunc obtains this
+		// name from the com.urunc.unikernel.blkDev annotation, which the image
+		// builder sets to match the unikernel. When the annotation is absent,
+		// the ID is either empty or the urunc-internal "rootfs" default, in
+		// which case we fall back to the historical MirageOS default
+		// ("storage") so that existing single-block images keep working.
+		args := make([]types.MonitorBlockArgs, 0, len(m.Block))
+		for _, blk := range m.Block {
+			id := blk.ID
+			if id == "" || id == genericRootfsBlkID {
+				id = MirageDefaultBlkID
+			}
+			args = append(args, types.MonitorBlockArgs{
+				ID:   id,
+				Path: blk.HostPath,
+			})
 		}
+		return args
 	default:
 		return nil
 	}

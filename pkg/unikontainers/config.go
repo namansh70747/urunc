@@ -44,6 +44,7 @@ const (
 	annotInitrd        = "com.urunc.unikernel.initrd"
 	annotBlock         = "com.urunc.unikernel.block"
 	annotBlockMntPoint = "com.urunc.unikernel.blkMntPoint"
+	annotBlkDev        = "com.urunc.unikernel.blkDev"
 	annotMountRootfs   = "com.urunc.unikernel.mountRootfs"
 )
 
@@ -57,6 +58,7 @@ type UnikernelConfig struct {
 	Initrd           string `json:"com.urunc.unikernel.initrd,omitempty"`
 	Block            string `json:"com.urunc.unikernel.block,omitempty"`
 	BlkMntPoint      string `json:"com.urunc.unikernel.blkMntPoint,omitempty"`
+	BlkDev           string `json:"com.urunc.unikernel.blkDev,omitempty"`
 	MountRootfs      string `json:"com.urunc.unikernel.mountRootfs"`
 }
 
@@ -118,6 +120,7 @@ func getConfigFromSpec(spec *specs.Spec) *UnikernelConfig {
 	initrd := spec.Annotations[annotInitrd]
 	block := spec.Annotations[annotBlock]
 	blkMntPoint := spec.Annotations[annotBlockMntPoint]
+	blkDev := spec.Annotations[annotBlkDev]
 	MountRootfs := spec.Annotations[annotMountRootfs]
 	uniklog.WithFields(logrus.Fields{
 		"unikernelType":    tryDecode(unikernelType),
@@ -128,6 +131,7 @@ func getConfigFromSpec(spec *specs.Spec) *UnikernelConfig {
 		"initrd":           tryDecode(initrd),
 		"block":            tryDecode(block),
 		"blkMntPoint":      tryDecode(blkMntPoint),
+		"blkDev":           tryDecode(blkDev),
 		"mountRootfs":      tryDecode(MountRootfs),
 	}).WithField("source", "spec").Debug("urunc annotations")
 
@@ -140,6 +144,7 @@ func getConfigFromSpec(spec *specs.Spec) *UnikernelConfig {
 		Initrd:           initrd,
 		Block:            block,
 		BlkMntPoint:      blkMntPoint,
+		BlkDev:           blkDev,
 		MountRootfs:      MountRootfs,
 	}
 }
@@ -179,6 +184,7 @@ func getConfigFromJSON(jsonFilePath string) (*UnikernelConfig, error) {
 		"initrd":           tryDecode(conf.Initrd),
 		"block":            tryDecode(conf.Block),
 		"blkMntPoint":      tryDecode(conf.BlkMntPoint),
+		"blkDev":           tryDecode(conf.BlkDev),
 		"mountRootfs":      tryDecode(conf.MountRootfs),
 	}).WithField("source", uruncJSONFilename).Debug("urunc annotations")
 
@@ -244,6 +250,12 @@ func (c *UnikernelConfig) decode() error {
 	}
 	c.BlkMntPoint = string(decoded)
 
+	decoded, err = base64.StdEncoding.DecodeString(c.BlkDev)
+	if err != nil {
+		return fmt.Errorf("failed to decode BlkDev: %v", err)
+	}
+	c.BlkDev = string(decoded)
+
 	decoded, err = base64.StdEncoding.DecodeString(c.MountRootfs)
 	if err != nil {
 		return fmt.Errorf("failed to decode mountRootfs: %v", err)
@@ -279,6 +291,9 @@ func (c *UnikernelConfig) Map() map[string]string {
 	}
 	if c.BlkMntPoint != "" {
 		myMap[annotBlockMntPoint] = c.BlkMntPoint
+	}
+	if c.BlkDev != "" {
+		myMap[annotBlkDev] = c.BlkDev
 	}
 	if c.MountRootfs != "" {
 		myMap[annotMountRootfs] = c.MountRootfs

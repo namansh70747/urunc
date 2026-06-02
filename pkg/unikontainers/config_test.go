@@ -37,6 +37,7 @@ func TestGetConfigFromSpec(t *testing.T) {
 				annotInitrd:        "initrd1",
 				annotBlock:         "block1",
 				annotBlockMntPoint: "point1",
+				annotBlkDev:        "storage",
 				annotMountRootfs:   "true",
 			},
 		}
@@ -49,6 +50,7 @@ func TestGetConfigFromSpec(t *testing.T) {
 			Initrd:          "initrd1",
 			Block:           "block1",
 			BlkMntPoint:     "point1",
+			BlkDev:          "storage",
 			MountRootfs:     "true",
 		}
 
@@ -238,6 +240,7 @@ func TestMap(t *testing.T) {
 			Initrd:          "initrd_value",
 			Block:           "block_value",
 			BlkMntPoint:     "point_value",
+			BlkDev:          "storage",
 			MountRootfs:     "false",
 		}
 		expectedMap := map[string]string{
@@ -248,6 +251,7 @@ func TestMap(t *testing.T) {
 			annotInitrd:        "initrd_value",
 			annotBlock:         "block_value",
 			annotBlockMntPoint: "point_value",
+			annotBlkDev:        "storage",
 			annotMountRootfs:   "false",
 		}
 		resultMap := config.Map()

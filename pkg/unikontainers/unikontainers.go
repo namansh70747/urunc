@@ -471,6 +471,7 @@ func (u *Unikontainer) Exec(metrics m.Writer) error {
 			uruncJSONPath: uruncJSONFilename,
 			guestType:     unikernelType,
 			guest:         unikernel,
+			blkDev:        u.State.Annotations[annotBlkDev],
 		}
 	case "initrd":
 		rfsBuilder = initrdRootfs{
@@ -497,6 +498,7 @@ func (u *Unikontainer) Exec(metrics m.Writer) error {
 			monRootfs:            rootfsParams.MonRootfs,
 			annotBlockPath:       u.State.Annotations[annotBlock],
 			annotBlockMountPoint: u.State.Annotations[annotBlockMntPoint],
+			annotBlkDev:          u.State.Annotations[annotBlkDev],
 		}
 	}
 
